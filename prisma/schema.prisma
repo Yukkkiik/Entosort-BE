@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ────────────────────────────────────────────────────────────
+// Enum Definitions
+// ────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
+enum NodeType {
+  CAMERA        // Raspberry Pi 4
+  MICROCONTROLLER // ESP32
+}
+
+enum NodeStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum ErrorSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+// ────────────────────────────────────────────────────────────
+// User — Sistem autentikasi & manajemen pengguna
+// ────────────────────────────────────────────────────────────
+
+model User {
+  id          String       @id @default(cuid())
+  username    String       @unique 
+  password    String
+  phone       String?
+  role        Role         @default(OPERATOR)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relasi: Satu user dapat memiliki/melakukan banyak sesi panen
+  harvestLogs HarvestLog[] 
+
+  @@map("users")
+}
+
+// ────────────────────────────────────────────────────────────
+// Node — Entitas Master Perangkat (Pengganti DeviceStatus)
+// ────────────────────────────────────────────────────────────
+
+model Node {
+  id          String       @id @default(cuid())
+  nodeId      String       @unique              // Identifier unik (misal: "esp32-01", "rpi-cam-01")
+  nodeType    NodeType
+  status      NodeStatus   @default(OFFLINE)
+  ipAddress   String?
+  firmwareV   String?                           // Versi firmware
+  lastSeen    DateTime     @default(now())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relasi ke tabel log dan pengaturan
+  sensorLogs  SensorLog[]
+  harvestLogs HarvestLog[]
+  errorLogs   ErrorLog[]
+  settings    Settings?    // One-to-One: Satu node punya satu konfigurasi setting
+
+  @@index([status])
+  @@map("nodes")
+}
+
+// ────────────────────────────────────────────────────────────
+// SensorLog — Data suhu & kelembapan dari BME280 (via ESP32)
+// ────────────────────────────────────────────────────────────
+
+model SensorLog {
+  id          String   @id @default(cuid())
+  nodeId      String   // Foreign Key
+  temperature Float    // Celsius
+  humidity    Float    // Persen RH
+  pressure    Float?   // hPa (opsional dari BME280)
+  recordedAt  DateTime @default(now())
+
+  // Definisi Relasi ke tabel Node
+  node        Node     @relation(fields: [nodeId], references: [nodeId], onDelete: Cascade)
+
+  @@index([nodeId])
+  @@index([recordedAt])
+  @@map("sensor_logs")
+}
+
+// ────────────────────────────────────────────────────────────
+// HarvestLog — Akumulasi hasil klasifikasi sortir (per sesi)
+// ────────────────────────────────────────────────────────────
+
+model HarvestLog {
+  id           String   @id @default(cuid())
+  sessionId    String   // ID sesi panen (UUID dari Raspberry Pi)
+  nodeId       String   // Foreign Key ke Node (Raspberry Pi)
+  userId       String?  // Foreign Key ke User (Operator yang bertugas)
+  larvaeCount  Int      @default(0) // Jumlah larva BSF terdeteksi
+  prepupaCount Int      @default(0) // Jumlah prepupa terdeteksi
+  rejectCount  Int      @default(0) // Jumlah objek tidak terklasifikasi
+  totalCount   Int      @default(0) // Total keseluruhan
+  durationSec  Int?                 // Durasi sesi (detik)
+  notes        String?
+  recordedAt   DateTime @default(now())
+
+  // Definisi Relasi
+  node         Node     @relation(fields: [nodeId], references: [nodeId], onDelete: Cascade)
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([nodeId])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([recordedAt])
+  @@map("harvest_logs")
+}
+
+// ────────────────────────────────────────────────────────────
+// Settings — Parameter kalibrasi kamera & kontrol perangkat
+// ────────────────────────────────────────────────────────────
+
+model Settings {
+  id              String   @id @default(cuid())
+  nodeId          String   @unique // Foreign Key ke Node
+  
+  // Kalibrasi HSV (Computer Vision — OpenCV)
+  hsvLowerH       Int      @default(0)
+  hsvLowerS       Int      @default(0)
+  hsvLowerV       Int      @default(0)
+  hsvUpperH       Int      @default(179)
+  hsvUpperS       Int      @default(255)
+  hsvUpperV       Int      @default(255)
+
+  // Parameter conveyor & sorting
+  motorSpeedRpm   Int      @default(60)  // RPM motor conveyor
+  solenoidDelayMs Int      @default(200) // Delay aktifasi solenoid (ms)
+  irThreshold     Int      @default(512) // Nilai ADC threshold sensor IR
+
+  // Mode manual
+  manualMode      Boolean  @default(false)
+  motorOn         Boolean  @default(false)
+  solenoidOn      Boolean  @default(false)
+
+  updatedAt       DateTime @updatedAt
+
+  // Definisi Relasi (One-to-One dengan Node)
+  node            Node     @relation(fields: [nodeId], references: [nodeId], onDelete: Cascade)
+
+  @@index([nodeId])
+  @@map("settings")
+}
+
+// ────────────────────────────────────────────────────────────
+// ErrorLog — Pencatatan kegagalan hardware/kamera
+// ────────────────────────────────────────────────────────────
+
+model ErrorLog {
+  id         String        @id @default(cuid())
+  nodeId     String        // Foreign Key ke Node
+  errorCode  String?       // Kode error internal
+  errorType  String        // Kategori: "SENSOR_FAIL", "CAMERA_ERROR", dll
+  message    String
+  severity   ErrorSeverity @default(ERROR)
+  resolved   Boolean       @default(false)
+  resolvedAt DateTime?
+  occurredAt DateTime      @default(now())
+
+  // Definisi Relasi
+  node       Node          @relation(fields: [nodeId], references: [nodeId], onDelete: Cascade)
+  // Catatan: field 'nodeType' dihapus karena tipe node sudah bisa diketahui dari relasi tabel 'Node'
+
+  @@index([nodeId])
+  @@index([severity])
+  @@index([resolved])
+  @@index([occurredAt])
+  @@map("error_logs")
+}
