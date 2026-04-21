@@ -8,7 +8,7 @@ const OFFLINE_THRESHOLD_SEC = parseInt(process.env.NODE_OFFLINE_THRESHOLD_SEC) |
 const getAllDevices = async() => {
     const thresholdTime = new Date(Date.now() - OFFLINE_THRESHOLD_SEC * 1000);
 
-    await prisma.deviceStatus.updateMany({
+    await prisma.node.updateMany({
         where: {
             status: "ONLINE",
             lastSeen: { lt: thresholdTime },
@@ -16,7 +16,7 @@ const getAllDevices = async() => {
         data: { status: "OFFLINE" }
     });
 
-    return prisma.deviceStatus.findMany({
+    return prisma.node.findMany({
         orderBy: { lastSeen: "desc" }
     });
 };
@@ -36,14 +36,14 @@ const updateDevice = async(nodeId, { ipAddress, firmwareV, nodeType }) => {
     if (firmwareV !== undefined) data.firmwareV = firmwareV;
     if (nodeType !== undefined) data.nodeType = nodeType;
 
-    return prisma.deviceStatus.update({
+    return prisma.node.update({
         where: {nodeId},
         data,
     });
 };
 
 const deleteDevice = async(nodeId) => {
-    await prisma.deviceStatus.delete({
+    await prisma.node.delete({
         where: {nodeId}
     });
 };
