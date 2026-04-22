@@ -3,6 +3,12 @@ const { generateToken } = require('../utils/jwt')
 const { comparePassword } = require('../utils/hashPassword');
 
 const login = async (username, password) => {
+    if (!username || !password) {
+        throw {
+            status: 400,
+            message: 'Username and password are required'
+        }
+    }
     const user = await prisma.user.findUnique({
         where: {
             username
@@ -11,7 +17,7 @@ const login = async (username, password) => {
 
     if (!user) throw {
         status:401,
-        message: 'User not found'
+        message: 'Invalid username or password'
     };
 
     const isPasswordValid = await comparePassword(password, user.password);
@@ -25,7 +31,6 @@ const login = async (username, password) => {
         id: user.id,
         username: user.username,
         role: user.role,
-        createdAt: user.createdAt
     });
 
     return {

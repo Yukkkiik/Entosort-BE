@@ -1,12 +1,17 @@
 const authService = require('../services/auth.service')
+const { successResponse } = require('../utils/response');
 
 const login = async (req, res, next) => {
     try {   
         const result = await authService.login(req.body.username, req.body.password);
-        res.status(200).json({
-            success: true,
-            message: 'login successful ',
-            data: result
+        res.cookie('access_token', result.token, {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 60 * 60 * 100 // 1 jam
+        })
+        return successResponse(res, {
+            message: "login successful",
         })
     } catch (error) {
         next(error);
@@ -14,10 +19,19 @@ const login = async (req, res, next) => {
 };
 
 const logout = async(_req, res) => {
-    res.json({
-        success: true,
-        message: "Logout berhasil"
-    });
+    try {
+        res.clearCookie('access_token', {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+
+        return successResponse(res, {
+            message: "Logout Successful"
+        })
+    } catch (error) {
+        next(error);
+    }
 };
 
 const getProfile = async(req, res, next) => {

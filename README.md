@@ -11,6 +11,6 @@ Ini adalah repositori backend untuk proyek **Entosort**. Dibangun menggunakan Ex
 ## 🛠️ Tech Stack
 * **Runtime:** Node.js
 * **Framework:** Express.js
-* **Database:** [Sebutkan Database Kamu, misal: MongoDB / PostgreSQL]
+* **Database:** Mysql
 * **Security:** CORS, Helmet, Dotenv
 * **Utility:** Nodemon (Development)

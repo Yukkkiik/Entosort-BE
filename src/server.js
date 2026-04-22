@@ -3,15 +3,17 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser')
 
 const rateLimiter = require("./middleware/ratelimiter");
 const apiRoutes = require("./routes/index.routes");
-
+const registerMqttRoutes = require('./mqtt/mqtt.routes');
 const prisma = require("./config/database");
 
 const PORT = process.env.PORT || 3000
 const app = express();
 
+app.use(cookieParser())
 app.use(helmet());
 app.use(
   cors({
@@ -42,6 +44,8 @@ const startServer = async () => {
     console.log("⏳ Sedang mencoba terhubung ke database...");
     await prisma.$connect(); 
     console.log("✅ Database berhasil terhubung!");
+
+    registerMqttRoutes();
 
     app.listen(PORT, () => {
       console.log(`\n🚀 Server berhasil berjalan!`);
