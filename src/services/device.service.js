@@ -48,7 +48,7 @@ const deleteDevice = async(nodeId) => {
     });
 };
 
-const hearthbeatDevice = async({ nodeId, nodeType, ipAddress, firmwareV }) => {
+const heartbeatDevice = async({ nodeId, nodeType, ipAddress, firmwareV }) => {
     await prisma.node.upsert({
         where: { nodeId },
         update: {
@@ -84,6 +84,6 @@ module.exports = {
     getDeviceById,
     updateDevice,
     deleteDevice,
-    hearthbeatDevice,
+    heartbeatDevice,
     getSettingsByNodeId
 }

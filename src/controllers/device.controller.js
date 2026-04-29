@@ -53,7 +53,7 @@ const deleteDevice = async(req, res, next) =>{
 
 const hearthbeat = async(req, res ,next) => {
     try {
-        const device = await deviceService.hearthbeatDevice(req.body);
+        const device = await deviceService.heartbeatDevice(req.body);
         return successResponse (res, {
             message: "Status Perangkat berhasil diperbarui",
             data: device

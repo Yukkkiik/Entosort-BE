@@ -14,7 +14,7 @@ client.on("reconnect", () => {
     console.log("Reconnecting to MQTT broker...");
 });
 
-client.on("error", () => {
+client.on("error", (error) => {
     console.log("MQTT error: ", error.message);
 });
 

@@ -3,7 +3,7 @@ const deviceServices = require('../../services/device.service');
 const handleHearbet = async(message) => {
     const payload = JSON.parse(message);
 
-    await deviceServices.hearthbeatDevice({
+    await deviceServices.heartbeatDevice({
         nodeId: payload.nodeId,
         nodeType: payload.nodeType,
         ipAddress: payload.ipAddress,
@@ -23,7 +23,7 @@ const handleStatus = async(message) => {
     return;
   }
 
-  await deviceServices.hearthbeatDevice({
+  await deviceServices.heartbeatDevice({
     nodeId: payload.nodeId,
     nodeType: payload.nodeType,
     ipAddress: payload.ipAddress,
